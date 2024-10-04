@@ -176,7 +176,7 @@ module Iskra
       end
     end
 
-    # Right now is if there main queue and there are some delays
+    # Right now is if the main queue is empty and there are some tasks in delayed_queue
     # the scheduler will just keep iterating until some task is awaken thus wasting CPU resources
     # The solution can be simple, if there are no tasks in main queue, use #sleep to wait to the next task
     sig { returns(T.nilable(TaskContext)) }

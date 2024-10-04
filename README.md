@@ -250,7 +250,7 @@ Note that without concurrent scope scheduler would execute outer coroutine first
 Channel is synchronization primitive used for communications between coroutines. Basically
 a channel is blocking timed queue, but instead of blocking threads it suspends fibers.
 
-Channel is parameterized with a type of it's element, so it has to provided during initialization. Default channel is unbound, which means its size is not limited, so it potentially infinite.
+Channel is parameterized with a type of it's element, so it has to be provided during initialization. Default channel is unbound, which means its size is not limited, so it potentially infinite.
 
 ```ruby
 channel = Iskra::Channel[String].new
@@ -378,7 +378,7 @@ class ConectionsPool
     @channel = T.let(channel, Iskra::Channel[PG::Connection])
   end
 
-  sig { params(size: Integer).returns(Iskra::Task[ConnectionsPool])}
+  sig { params(size: Integer, db_config: DbConfig).returns(Iskra::Task[ConnectionsPool])}
   def self.build(size, db_config)
     concurrent do
       channel = Iskra::Channel[PG::Connection].new
@@ -418,7 +418,7 @@ class ConectionsPool
 end
 ```
 
-Bounded hannels with Wait strategy can emulate semaphores and mutexes (semaphore with N=1). Let's we want to limit simultaneous access to some resource for a handful of coroutines:
+Bounded channels with Wait strategy can emulate semaphores and mutexes (semaphore with N=1). Let's we want to limit simultaneous access to some resource for a handful of coroutines:
 
 ```ruby
 class CoroutineMutex
