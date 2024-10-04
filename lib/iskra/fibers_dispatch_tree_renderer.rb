@@ -1,5 +1,6 @@
 # frozen_string_literal: true
-# typed: ignore
+# typed: true
+
 
 module Iskra
   class FibersDispatchTreeRenderer

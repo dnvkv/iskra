@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-# typed: ignore
+# typed: true
 
 module Iskra
   class Worker
@@ -26,11 +26,11 @@ module Iskra
     sig { returns(Thread) }
     attr_reader :thread
 
-    sig { params(pool: Iskra::ThreadPool, id: Integer).void }
+    sig { params(pool: ::Iskra::ThreadPool, id: Integer).void }
     def initialize(pool, id)
       # instance variables accessed only under pool's lock so no need to sync here again
-      @worker_queue  = T.let(Queue.new, Queue)
-      @pool   = T.let(pool, Iskra::ThreadPool)
+      @worker_queue  = T.let(::Queue.new, ::Queue)
+      @pool   = T.let(pool, ::Iskra::ThreadPool)
       @thread = T.let(create_worker(@worker_queue, pool, pool.idletime), Thread)
 
       if @thread.respond_to?(:name=)
@@ -57,8 +57,8 @@ module Iskra
 
     sig {
       params(
-        queue:    Queue,
-        pool:     Iskra::ThreadPool,
+        queue:    ::Queue,
+        pool:     ::Iskra::ThreadPool,
         idletime: T.any(Float, Integer)
       ).returns(Thread)
     }
@@ -95,7 +95,7 @@ module Iskra
     # TODO: use logger
     sig {
       params(
-        pool: Iskra::ThreadPool,
+        pool: ::Iskra::ThreadPool,
         task: Proc
       ).void
     }

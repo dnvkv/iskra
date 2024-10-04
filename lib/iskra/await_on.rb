@@ -1,15 +1,14 @@
 # frozen_string_literal: true
-# typed: ignore
+# typed: true
 
 module Iskra
-  class RegisterFinalizer < T::Struct
+  class AwaitOn < T::Struct
     extend T::Sig
     extend T::Generic
     extend T::Helpers
 
     A = type_member
 
-    const :task, Iskra::Task[A]
-    const :finalizer, T.proc.void
+    const :value, A
   end
 end

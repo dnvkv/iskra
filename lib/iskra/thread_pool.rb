@@ -1,12 +1,14 @@
 # frozen_string_literal: true
-# typed: ignore
+# typed: true
+
+require_relative "worker"
 
 # Implementation is mostly taken from concurrent_ruby Concurrent::RubyExecutorService
 module Iskra
   class ThreadPool
     extend T::Sig
 
-    Worker = Iskra::Worker
+    Worker = ::Iskra::Worker
     private_constant :Worker
 
     class FallbackPolicy < T::Enum
@@ -29,7 +31,7 @@ module Iskra
 
     class ExecutableCtx < T::Struct
       const :thunk, T.proc.void
-      const :task, Iskra::Task[T.untyped]
+      const :task, ::Iskra::Task[T.untyped]
       const :ivar, ::Concurrent::IVar
     end
 
@@ -82,7 +84,7 @@ module Iskra
         @ready    = T.let([], T.nilable(T::Array[Worker])) # used as a stash (most idle worker is at the start)
         @queue    = T.let([], T.nilable(T::Array[ExecutableCtx])) # used as queue
         @awaiting = T.let({}, T.nilable(T::Hash[Thread, ::Concurrent::IVar]))
-        @interrupted_set = T.let(Set.new, T.nilable(T::Set[Iskra::Task[T.untyped]]))
+        @interrupted_set = T.let(Set.new, T.nilable(T::Set[::Iskra::Task[T.untyped]]))
 
         # @ready or @queue is empty at all times
         @scheduled_task_count = T.let(0, T.nilable(Integer))
@@ -129,7 +131,7 @@ module Iskra
 
     sig {
       params(
-        task:  Iskra::Task[T.untyped],
+        task:  ::Iskra::Task[T.untyped],
         ivar:  ::Concurrent::IVar,
         thunk: T.proc.void
       ).returns(T::Boolean)
@@ -175,7 +177,7 @@ module Iskra
     sig {
       params(
         ivar:           ::Concurrent::IVar,
-        fibers_subtree: Iskra::FibersDispatchTree
+        fibers_subtree: ::Iskra::FibersDispatchTree
       ).returns(T.untyped)
     }
     def await(ivar, fibers_subtree)
@@ -198,15 +200,15 @@ module Iskra
             # TODO: this is functionality from Executor, but it should be here
             # ThreadPool and Executor should be refactored to clearly separate responsibilities
             begin
-              thread_pool = Iskra::ImmediateThreadPool.new
-              executor    = Iskra::Executor.new(thread_pool: thread_pool)
+              thread_pool = ::Iskra::ImmediateThreadPool.new
+              executor    = ::Iskra::Runtime.new(thread_pool: thread_pool)
               task = executable_ctx.task
               subtask_fiber = executor.build_new_fiber(task)
               fibers_subtree.fiber = subtask_fiber
               # [CANCELLATION] Should it cancel here?
               ivar.set(executor.execute(task, subtask_fiber, fibers_subtree))
             rescue => e
-              ivar.set(Iskra::ExecResult::Failure.new(e))
+              ivar.set(::Iskra::ExecResult::Failure.new(e))
             end
             ivar.value
           end

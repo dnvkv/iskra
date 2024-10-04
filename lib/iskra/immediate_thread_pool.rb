@@ -1,9 +1,21 @@
 # frozen_string_literal: true
-# typed: ignore
+# typed: true
+
+require_relative "thread_pool"
 
 module Iskra
   class ImmediateThreadPool < ThreadPool
     extend T::Sig
+
+    DEFAULT_MAX_POOL_SIZE      = T.let(2_147_483_647, Integer)
+    DEFAULT_MIN_POOL_SIZE      = T.let(0, Integer)
+    DEFAULT_MAX_QUEUE_SIZE     = T.let(0, Integer)
+    DEFAULT_THREAD_IDLETIMEOUT = T.let(60, Integer)
+    DEFAULT_SYNCHRONOUS        = T.let(false, T::Boolean)
+    DEFAULT_FALLBACK_POLICY    = T.let(
+      ::Iskra::ThreadPool::FallbackPolicy::Abort,
+      ::Iskra::ThreadPool::FallbackPolicy
+    )
 
     sig {
       params(
@@ -12,7 +24,7 @@ module Iskra
         idletime:        T.any(Float, Integer),
         max_queue:       Integer,
         synchronous:     T::Boolean,
-        fallback_policy: FallbackPolicy,
+        fallback_policy: ::Iskra::ThreadPool::FallbackPolicy,
         gc_interval:     T.nilable(Integer),
         name:            T.nilable(String),
         auto_terminate:  T::Boolean
@@ -36,7 +48,7 @@ module Iskra
 
     sig {
       params(
-        task:  Iskra::Task[T.untyped],
+        task:  ::Iskra::Task[T.untyped],
         ivar:  ::Concurrent::IVar,
         thunk: T.proc.void
       ).returns(T::Boolean)
@@ -48,7 +60,7 @@ module Iskra
       true
     end
 
-    sig { params(ivar: ::Concurrent::IVar, fibers_subtree: Iskra::FibersDispatchTree).returns(T.untyped) }
+    sig { params(ivar: ::Concurrent::IVar, fibers_subtree: ::Iskra::FibersDispatchTree).returns(T.untyped) }
     def await(ivar, fibers_subtree)
       T.must(ivar.value)
     end

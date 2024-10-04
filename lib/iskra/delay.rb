@@ -2,6 +2,7 @@
 # typed: true
 
 module Iskra
-  class CancellationException < StandardError
+  class Delay < T::Struct
+    const :time, T.any(Float, Integer)
   end
 end

@@ -2,13 +2,13 @@
 # typed: true
 
 module Iskra
-  class Await < T::Struct
+  class SignalAwakeOn < T::Struct
     extend T::Sig
     extend T::Generic
     extend T::Helpers
 
     A = type_member
 
-    const :task, ::Iskra::Task[A]
+    const :value, A
   end
 end

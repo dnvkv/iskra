@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-# typed: ignore
+# typed: true
 
 module Iskra
   class Cancel < T::Struct
@@ -9,6 +9,6 @@ module Iskra
 
     A = type_member
 
-    const :task, Iskra::Task[A]
+    const :task, ::Iskra::Task[A]
   end
 end
