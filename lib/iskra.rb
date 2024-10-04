@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-# typed: ignore
+# typed: strict
 
 module Iskra
 end
