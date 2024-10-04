@@ -1,5 +1,7 @@
 # Iskra
 
+**Work in progress** Iskra is not production ready yet!
+
 Iskra is a Ruby library for type safe structured concurrent programming using light-weight threads aka coroutines.
 
 Corotine is a light-weight thread that exists only in user-space. Coroutines are backed up by Ruby OS threads using M:N scheduler,
