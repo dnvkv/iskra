@@ -72,10 +72,10 @@ end
 
 Let's break down possible results.
 
-Result 1: top level coroutines starts execution. During execution it calls `#concurent` which is stored into `coroutine1` variable. Iskra scheduler decides to continue execution of top-level coroutine, so another coroutine (coroutine2) is added to scheduler. After that, top level coroutine has no more code to execute, but since it forms a concurrent scope, it awaits until all nested coroutines are executed. Scheduler decides to start execution from `coroutine1`: it prints `In coroutine 1. Step 1`, but then coroutine is suspended via invokation of `#await_something`. Since `coroutine1` is suspended, 
-scheduler decides to run `coroutine2`, and prints `In coroutine 2`. Then scheduler awaits until `coroutine1` is resumed and prints `In coroutine 1. Step 2`.
+Result 1: top level coroutines starts execution. During execution it calls `#concurent` which is stored into `coroutine1` variable. Iskra scheduler decides to continue execution of top-level coroutine, so another coroutine (coroutine2) is added to scheduler. After that, top level coroutine has no more code to execute, but since it forms a concurrent scope, it awaits until all nested coroutines are executed. Scheduler decides to start execution from `coroutine1`: it prints `"In coroutine 1. Step 1"`, but then coroutine is suspended via invokation of `#await_something`. Since `coroutine1` is suspended, 
+scheduler decides to run `coroutine2`, and prints `"In coroutine 2"`. Then scheduler awaits until `coroutine1` is resumed and prints `"In coroutine 1. Step 2"`.
 
-Result 2: top level coroutines starts execution. It schedules two coroutines. This time scheduler decides to start execution from `coroutine2`: it prints `In coroutine 2`, then coroutine finishes it's execution. Then scheduler decides to run `coroutine1`, and prints `In coroutine 1. Step 1`, and `In coroutine 1. Step 2` then finishes execution
+Result 2: top level coroutines starts execution. It schedules two coroutines. This time scheduler decides to start execution from `coroutine2`: it prints `"In coroutine 2"`, then coroutine finishes it's execution. Then scheduler decides to run `coroutine1`, and prints `"In coroutine 1. Step 1"`, and `"In coroutine 1. Step 2"` then finishes execution
 
 Please not that execution is not shifted to other coroutine each time a coroutine hits a suspension point. Suspension point just allows Iskra runtime
 to evaluate whether the current coroutine shoud be kept running, or execution should be shifted.
@@ -244,3 +244,239 @@ end
 # > In outer
 ```
 Note that without concurrent scope scheduler would execute outer coroutine first, so "In outer" will be printed first, since `scope` coroutine will be suspended by `delay` thus making scheduler to prioritize execution of top level coroutine.
+
+### Channel
+
+Channel is synchronization primitive used for communications between coroutines. Basically
+a channel is blocking timed queue, but instead of blocking threads it suspends fibers.
+
+Channel is parameterized with a type of it's element, so it has to provided during initialization. Default channel is unbound, which means its size is not limited, so it potentially infinite.
+
+```ruby
+channel = Iskra::Channel[String].new
+```
+
+Since channel is conceptually a queue it has two main operation: enqueue and dequeue, or `#post` and `#receive`. Since this operations may suspend a fiber, they return a coroutine.
+
+```ruby
+run_blocking do
+  concurrent do
+    channel = Iskra::Channel[String].new
+
+    producer = concurrent do
+      channel.post("Hello world!")
+    end
+
+    consumer = concurrent do
+      string = channel.receive.await!
+      blocking! { puts(string) }
+    end
+
+    # It is recommended to close channel after its usage
+    channel.close
+  end
+end
+```
+
+Posting to unbound channel won't suspend a coroutine, however receiving from empty coroutine will suspend a coroutine until an element won't be added. This allows to synchronize two coroutines.
+
+For example, the first coroutine awaits for users input, and second awaits on new elements added to channel.
+
+```ruby
+run_blocking do
+  concurrent do
+    channel = Iskra::Channel[String].new
+
+    producer = concurrent do
+      loop do
+        string = blocking! { gets }
+        channel.post(string)
+        
+        break if string == "\n"
+      end
+    end
+
+    consumer = concurrent do
+      string = channel.receive.await!
+      break if string == "\n"
+
+      blocking! { write_to_file(string) }
+    end
+
+    # It is recommended to close channel after its usage
+    channel.close
+  end
+end
+```
+
+#### Bounded channel
+
+Bounded channels has specified upper limit. When posting to a full channel, it may either
+drop element (just ignore the operartion), raise an error, or suspend a coroutine until
+some another coroutine reads from it (thus making `#post` potentially a blocking operation).
+
+In order to create a bounded channel, `max_size` should be provided into constructor:
+
+```ruby
+channel = Iskra::Channel[String].new(max_size: 5)
+
+# dropping channel
+dropping_channel = Iskra::Channel[String].new(max_size: 5, on_full: Iskra::Channel::OnFull::Drop)
+
+# raising channel
+raising_channel = Iskra::Channel[String].new(max_size: 5, on_full: Iskra::Channel::OnFull::Raise)
+
+# waiting channel
+waiting_channel = Iskra::Channel[String].new(max_size: 5, on_full: Iskra::Channel::OnFull::Wait)
+```
+
+##### Backpressure
+
+Bound channels can be used for introducing backpressure. For example, there are two coroutines: a producer that reads users input and post it to the queue, and consumer that receives users input from the queue and performs some business logic with.
+During spikes of throughput consumer workers may not keep up, so some users' requests
+should not be processed to not overload the system:
+
+```ruby
+run_blocking do
+  concurrent do
+    channel = Iskra::Channel[Request].new(max_size: 100, on_full: Iskra::Channel::OnFull::Drop)
+
+    # If channels size will reach 100, channel will ignore new elements
+    # until it's size get back below its max size
+    producer = concurrent do
+      loop do
+        request = blocking! { read_user_input }
+        # returns false if channel is full and strategy is Drop
+        result = channel.post(request).await!
+        
+        unless result
+          blocking! { response_with_unprocessed(request) }
+        end
+      end
+    end
+
+    consumer = concurrent do
+      request = channel.receive.await!
+
+      blocking! { process_request(string) }
+    end
+  end
+end
+```
+
+##### Synchronization
+
+Channels can be used for synchronization to a limited resources pool.
+By storing the resources into the channel, we can acthive following behaviour:
+
+```ruby
+class ConectionsPool
+  extend T::Sig
+
+  sig { params(channel: Iskra::Channel[PG::Connection]).void }
+  def initialize(channel)
+    @channel = T.let(channel, Iskra::Channel[PG::Connection])
+  end
+
+  sig { params(size: Integer).returns(Iskra::Task[ConnectionsPool])}
+  def self.build(size, db_config)
+    concurrent do
+      channel = Iskra::Channel[PG::Connection].new
+
+      size.times do
+        connection = blocking! do
+          PG.connect(
+            dbname:   db_config.name,
+            user:     db_config.user,
+            password: db_config.password
+          )
+        end
+        channel.post(connectoin)
+      end
+    end
+  end
+
+  sig {
+    type_parameters(:Result)
+      .params(
+        blk: T.proc.params(arg: PG::Connection).returns(
+          arg0: ::Iskra::Task[T.type_parameters(:Result)])
+      )
+      .returns(Iskra::Task[T.type_paramenter(:Result)])
+  }
+  def use(&blk)
+    concurrent do
+      # get connection from a pool. if pool is empty, await until
+      # some other consuemer won't yield it back
+      connection = @channel.receive.await!
+      result = blk.call(connection).await!
+      # yield back a connection to the pool
+      @channel.post(connection)
+      result
+    end
+  end
+end
+```
+
+Bounded hannels with Wait strategy can emulate semaphores and mutexes (semaphore with N=1). Let's we want to limit simultaneous access to some resource for a handful of coroutines:
+
+```ruby
+class CoroutineMutex
+  extend T::Sig
+
+  class Handle
+    extend T::Sig
+
+    Instance = T.let(
+      ::CoroutineMutex::Handle.new,
+      ::CoroutineMutex::CoroutineMutex
+    )
+  end
+
+  sig { void }
+  def initialize
+    @channel = T.let(
+      Iskra::Channel[Handle].new(max_size: 1, on_full: Iskra::Channel::OnFull::Wait),
+      Iskra::Channel[Handle]
+    )
+  end
+
+  sig {
+    type_parameters(:Result)
+      .params(blk: T.proc.returns(arg0: Iskra::Task[T.type_parameters(:Result)])
+      .returns(Iskra::Task[T.type_paramenter(:Result)])
+  }
+  def synchronize(&blk)
+    concurrent do
+      @channel.post(Handle::Instance)
+      result = blk.call.await!
+      @channel.receive.await!
+      result
+    end
+  end
+end
+
+class Console
+  extend T::Sig
+
+  sig { void }
+  def initialize
+    @mutex = T.let(CoroutineMutex.new, CoroutineMutex)
+  end
+
+  sig { params(string: String).returns(Iskra::Task[T.anything]) }
+  def write(string)
+    @mutex.syncronize do
+      blocking! { puts(string) }
+    end
+  end
+
+  sig { returns(Iskra::Task[String]) }
+  def read
+    @mutex.syncronize do
+      blocking! { get }
+    end
+  end
+end
+```
+
