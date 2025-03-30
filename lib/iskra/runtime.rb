@@ -224,7 +224,8 @@ module Iskra
                 runtime            = ::Iskra::Runtime.new(thread_pool: @thread_pool)
                 subtask_fiber      = runtime.build_new_fiber(dispatched_task)
                 task_subtree.fiber = subtask_fiber
-                runtime.execute(dispatched_task, subtask_fiber, task_subtree)
+                result = runtime.execute(dispatched_task, subtask_fiber, task_subtree)
+                subtask_ivar.set(Success.new(result))
               rescue => e
                 unless subtask_ivar.complete?
                   subtask_ivar.set(Failure.new(e))
@@ -367,7 +368,7 @@ module Iskra
             @scheduler.await_children_finished(
               T.must(current_task_context).task,
               subtree,
-              Success.new(latest_yield)
+              Success.new(current_yield)
             )
             @scheduler.add_task(T.must(current_task_context))
             T.must(current_fiber_subtree).state_ref.change_to(FiberState::ScopeWaiting)
@@ -376,7 +377,7 @@ module Iskra
             @scheduler.await_children_failed(
               T.must(current_task_context).task,
               subtree,
-              Success.new(latest_yield)
+              Success.new(current_yield)
             )
             @scheduler.add_task(T.must(current_task_context))
             T.must(current_fiber_subtree).state_ref.change_to(FiberState::ScopeWaiting)
@@ -496,7 +497,7 @@ module Iskra
 
     sig { returns(::Iskra::ThreadPool) }
     def self.thread_pool
-      @thread_pool ||= ::Iskra::ThreadPool.new(min_threads: 4, max_threads: 4)
+      @thread_pool ||= ::Iskra::ThreadPool.new(min_threads: 4, max_threads: 16)
     end
 
     sig { returns(::Iskra::FibersRegistry) }

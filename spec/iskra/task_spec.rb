@@ -84,7 +84,6 @@ describe ::Iskra::Task do
 
     context "delays" do
       it "suspends coroutines during delays" do
-        starting = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         result = run_blocking do
           concurrent do
             buffer = []
@@ -100,8 +99,6 @@ describe ::Iskra::Task do
             buffer
           end
         end
-        ending = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        elapsed = ending - starting
 
         expect(result).to eq([2, 1])
       end
@@ -141,6 +138,49 @@ describe ::Iskra::Task do
         end
 
         expect(result).to eq([1, 2])
+      end
+    end
+
+    context "async execution" do
+      it "doesn't block the main thread" do
+        starting = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        result = run_blocking do
+          concurrent do
+            buffer = []
+            async1 = async { sleep(0.1); buffer << 1 }
+            async2 = async { sleep(0.1); buffer << 2 }
+            async3 = async { sleep(0.1); buffer << 3 }
+            async4 = async { sleep(0.1); buffer << 4 }
+            buffer
+          end
+        end
+        ending = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        elapsed = ending - starting
+
+        expect(result.sort).to eq([1, 2, 3, 4])
+        expect(elapsed < 0.2).to be_truthy
+      end
+
+      it "awaiting async execution" do
+        starting = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        result = run_blocking do
+          concurrent do
+            async1 = async do
+              sleep(0.1)
+              1
+            end
+            async2 = async do
+              sleep(0.2)
+              2
+            end
+            [async1.await!, async2.await!]
+          end
+        end
+        ending = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        elapsed = ending - starting
+
+        expect(result).to eq([1, 2])
+        expect(elapsed < 0.3).to be_truthy
       end
     end
   end

@@ -229,8 +229,25 @@ module Iskra
             if awaiting_ivar.complete?
               next_resumed = awaiting_ivar.value
               set_resumed(task_context.task)
+
               break task_context.with_next_resumed(next_resumed)
             else
+              # If queue is empty, and there's only one task which awaits on IVar
+              # it makes sense to suspend current thred until IVar is complete to avoid unnecessary CPU
+              # this is espially important taking into account that unecessary schedule work will interfere
+              # with threads running CPU bound tasks in a thread pool.
+              # 
+              # The second check is a bit tricker. Basically if it is true it means that all current tasks in queue
+              # are in awaiting state. 
+              if @queue.empty?
+                awaiting_ivar.wait
+              elsif @queue < @awaiting
+                aggregate_ivar = ::Concurrent::Ivar.new
+                @awaiting.values.each do |ivar|
+                  ivar.add_observer { aggregate_ivar.try_set(true) }
+                end
+                aggregate_ivar.wait
+              end
               @queue.enqueue(task_context)
             end
           else
