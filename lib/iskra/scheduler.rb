@@ -22,7 +22,7 @@ module Iskra
 
       const :task, ::Iskra::Task[T.untyped]
       const :fiber, Fiber
-      const :latest_yield, T.untyped
+      # const :latest_yield, T.untyped
       const :next_resumed, T.untyped
       const :current_fiber_subtree, T.nilable(::Iskra::FibersDispatchTree)
 
@@ -31,7 +31,7 @@ module Iskra
         TaskContext.new(
           task: task,
           fiber: fiber,
-          latest_yield: latest_yield,
+          # latest_yield: latest_yield,
           next_resumed: new_next_resumed,
           current_fiber_subtree: current_fiber_subtree
         )
@@ -237,12 +237,12 @@ module Iskra
               # this is espially important taking into account that unecessary schedule work will interfere
               # with threads running CPU bound tasks in a thread pool.
               # 
-              # The second check is a bit tricker. Basically if it is true it means that all current tasks in queue
-              # are in awaiting state. 
+              # If the second check is true, all coroutines in the queue is in awaiting state
+              # in this case it makes sense to await until the next ivar will be complete, and the awaiting coroutine is resumed
               if @queue.empty?
                 awaiting_ivar.wait
-              elsif @queue < @awaiting
-                aggregate_ivar = ::Concurrent::Ivar.new
+              elsif @queue.size < @awaiting.size
+                aggregate_ivar = ::Concurrent::IVar.new
                 @awaiting.values.each do |ivar|
                   ivar.add_observer { aggregate_ivar.try_set(true) }
                 end

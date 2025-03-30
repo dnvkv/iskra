@@ -108,7 +108,10 @@ module Iskra
       # to store all iskra's fiber in a registry to ensure that concurrent operations
       # are called inside a coroutine (or in run_blocking).
       current_fiber         = T.let(fiber, T.nilable(Fiber))
-      latest_yield          = T.let(nil, T.untyped)
+
+      # latest_yield          = T.let(nil, T.untyped)
+      
+    
       # Stores a value, that current fiber will be resumed with during next iteration of the loop.
       # Primarily used to return a value from runtime to an Task#await! caller.
       next_resumed          = T.let(nil, T.untyped)
@@ -129,7 +132,7 @@ module Iskra
         ::Iskra::Scheduler::TaskContext.new(
           task: task,
           fiber: fiber,
-          latest_yield: latest_yield,
+          # latest_yield: latest_yield,
           next_resumed: next_resumed,
           current_fiber_subtree: current_fiber_subtree,
         ),
@@ -151,7 +154,7 @@ module Iskra
           current_task          = current_task_context.task
           current_fiber         = current_task_context.fiber
           current_fiber_subtree = current_task_context.current_fiber_subtree
-          latest_yield          = current_task_context.latest_yield
+          # latest_yield          = current_task_context.latest_yield
           next_resumed          = current_task_context.next_resumed
 
           log("Taking new task into work #{current_task} label=#{current_task.label}")
@@ -161,7 +164,7 @@ module Iskra
             task:  current_task,
             fiber: T.must(current_fiber),
             current_fiber_subtree: current_fiber_subtree,
-            latest_yield: latest_yield,
+            # latest_yield: latest_yield,
             next_resumed: next_resumed
           )
           @scheduler.add_task(suspended_task_data)
@@ -178,7 +181,7 @@ module Iskra
           current_task          = current_task_context.task
           current_fiber         = current_task_context.fiber
           current_fiber_subtree = current_task_context.current_fiber_subtree
-          latest_yield          = current_task_context.latest_yield
+          # latest_yield          = current_task_context.latest_yield
           next_resumed          = current_task_context.next_resumed
           # binding.pry if current_task_context&.task&.label == "main"
           T.must(current_fiber_subtree).state_ref.change_to(FiberState::Running)
@@ -210,7 +213,7 @@ module Iskra
                 task:                  dispatched_task,
                 fiber:                 subtask_fiber,
                 current_fiber_subtree: fibers_subtree,
-                latest_yield:          nil,
+                # latest_yield:          nil,
                 next_resumed:          nil
               )
             )
@@ -243,7 +246,7 @@ module Iskra
                 task:                  dispatched_task,
                 fiber:                 subtask_fiber,
                 current_fiber_subtree: fibers_subtree,
-                latest_yield:          nil,
+                # latest_yield:          nil,
                 next_resumed:          nil
               )
             )
@@ -251,7 +254,7 @@ module Iskra
               task:  current_task,
               fiber: T.must(current_fiber),
               current_fiber_subtree: current_fiber_subtree,
-              latest_yield: latest_yield,
+              # latest_yield: latest_yield,
               next_resumed: next_resumed
             )
             @scheduler.add_task(suspended_task_data)
@@ -259,11 +262,11 @@ module Iskra
             T.must(current_fiber_subtree).state_ref.change_to(FiberState::Suspended)
             current_task_context = nil
           end
-          latest_yield = current_yield
+          # latest_yield = current_yield
           next_resumed = dispatched_task
         when ::Iskra::Await
           awaited_task = T.unsafe(current_yield.task)
-          latest_yield = T.unsafe(current_yield)
+          # latest_yield = T.unsafe(current_yield)
           case awaited_task
           when ::Iskra::Task
             awaited_node = assert_subtree_presence!(fibers_tree.find_by_task(awaited_task))
@@ -275,7 +278,7 @@ module Iskra
                 task:  current_task,
                 fiber: T.must(current_fiber),
                 current_fiber_subtree: current_fiber_subtree,
-                latest_yield: latest_yield,
+                # latest_yield: latest_yield,
                 next_resumed: next_resumed
               )
               log("Suspending task #{current_task} label=#{current_task.label}")
@@ -286,7 +289,7 @@ module Iskra
             end
           end
         when ::Iskra::Cede
-          latest_yield = current_yield
+          # latest_yield = current_yield
           next_resumed = nil
         when ::Iskra::Delay
           delay_time = T.unsafe(current_yield.time)
@@ -296,14 +299,14 @@ module Iskra
             task:  current_task,
             fiber: T.must(current_fiber),
             current_fiber_subtree: current_fiber_subtree,
-            latest_yield: latest_yield,
+            # latest_yield: latest_yield,
             next_resumed: next_resumed
           )
           @scheduler.add_delayed_task(suspended_task_data, awake_at)
           T.must(current_fiber_subtree).state_ref.change_to(FiberState::Suspended)
           current_task_context = nil
 
-          latest_yield = current_yield
+          # latest_yield = current_yield
           next_resumed = nil
         when ::Iskra::Cancel
           canceled_task = T.unsafe(current_yield.task)
@@ -330,7 +333,7 @@ module Iskra
               canceled_subtree.state_ref.change_to(FiberState::Canceled)
             end
           end
-          latest_yield = current_yield
+          # latest_yield = current_yield
           next_resumed = nil
         when ::Iskra::AwaitOn
           value = T.unsafe(current_yield.value)
@@ -339,7 +342,7 @@ module Iskra
             task:  current_task,
             fiber: T.must(current_fiber),
             current_fiber_subtree: current_fiber_subtree,
-            latest_yield: latest_yield,
+            # latest_yield: latest_yield,
             next_resumed: next_resumed
           )
           log("Suspending task #{current_task} label=#{current_task.label}")
@@ -348,15 +351,15 @@ module Iskra
           T.must(current_fiber_subtree).state_ref.change_to(FiberState::Suspended)
           current_task_context = nil
 
-          latest_yield = current_yield
+          # latest_yield = current_yield
           next_resumed = nil
         when ::Iskra::SignalAwakeOn
           value = T.unsafe(current_yield.value)
           @scheduler.signal_awake_on(value)
-          latest_yield = current_yield
+          # latest_yield = current_yield
           next_resumed = nil
         else
-          latest_yield = current_yield
+          # latest_yield = current_yield
           next_resumed = nil
         end
       rescue => e
@@ -392,7 +395,7 @@ module Iskra
             @scheduler.set_finished(T.must(current_task_context).task)
             subtree.state_ref.change_to(FiberState::Finished)
             log("Finishing task #{current_task} label=#{current_task.label}")
-            T.must(subtree.ivar).set(Success.new(latest_yield))
+            T.must(subtree.ivar).set(Success.new(current_yield))
             current_task_context = nil
           else
             if e.is_a?(InternalError) && enable_diagnostics?
