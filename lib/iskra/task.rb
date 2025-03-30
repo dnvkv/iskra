@@ -56,7 +56,7 @@ module Iskra
         if child_fiber?
           Fiber.yield(::Iskra::Await.new(task: self))
         else
-          raise "Called outside concurrent scope"
+          raise OutsideOfConcurrentScopeError.new("Called outside concurrent scope")
         end
       end
 
@@ -74,13 +74,8 @@ module Iskra
       if ::Iskra::Runtime.fibers_registry.contains?(Fiber.current)
         Fiber.yield(::Iskra::Cancel.new(task: self))
       else
-        raise "Invalid call to #cede outside of concurrent context"
+        raise OutsideOfConcurrentScopeError.new("Invalid call to #cancel outside of concurrent context")
       end
-    end
-
-    sig { params(executor: T.nilable(::Iskra::Runtime)).returns(A) }
-    def run!(executor = nil)
-      await!
     end
 
     private
@@ -116,7 +111,7 @@ module Iskra
         if ::Iskra::Runtime.fibers_registry.contains?(Fiber.current)
           Fiber.yield(::Iskra::Delay.new(time: time))
         else
-          raise "Invalid call to #cede outside of concurrent context"
+          raise OutsideOfConcurrentScopeError.new("Invalid call to #delay outside of concurrent context")
         end
       end
 
@@ -165,7 +160,7 @@ module Iskra
         if ::Iskra::Runtime.fibers_registry.contains?(Fiber.current)
           Fiber.yield(Cede::Instance)
         else
-          raise "Invalid call to #cede outside of concurrent context"
+          raise OutsideOfConcurrentScopeError.new("Invalid call to #cede outside of concurrent context")
         end
       end
 
@@ -200,13 +195,6 @@ module Iskra
     extend T::Helpers
 
     A = type_member
-
-    sig { override.params(runtime: T.nilable(::Iskra::Runtime)).returns(A) }
-    def run!(runtime = nil)
-      default_runtime = ::Iskra::Task.default_runtime
-      current_runtime = runtime || default_runtime
-      current_runtime.execute(self)
-    end
   end
 
   class Async < Task

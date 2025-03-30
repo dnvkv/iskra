@@ -119,7 +119,7 @@ run_blocking do
       puts "Coroutine 1. Step 2"
     end
 
-    coroutine1 = concurrent do
+    coroutine2 = concurrent do
       puts "Coroutine 2. Step 1"
       # Suspends current coroutine and signals scheduler to shift execution
       # to another coroutine. Current coroutine will be resumed by scheduler
@@ -231,7 +231,7 @@ until all coroutines in the scope finish.
 ```ruby
 run_blocking do
   concurrent do
-    scope = concurrent_scope do
+    concurrent_scope do
       delay(0.1)
       blocking! { puts("After 0.1 delay") }
 

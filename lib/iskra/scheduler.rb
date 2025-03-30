@@ -191,9 +191,17 @@ module Iskra
           end
         end
         if @queue.empty?
-          break nil if @delayed_queue.empty?
-
-          next
+          if next_delayed.nil?
+            break nil 
+          else
+            # main queue is empty, so no coroutines are currently executed except for suspended with delay
+            # calling next here will cause sheduler to loop until next_awake_at, wasting cpu
+            # it makes sense to sleep until next_awake_at
+            # 
+            # sleep_for = next_awake_at - Time.now
+            # sleep(sleep_for)
+            next
+          end
         end
         task_context = T.must(@queue.dequeue)
 

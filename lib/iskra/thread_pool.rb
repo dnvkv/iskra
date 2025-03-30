@@ -174,47 +174,47 @@ module Iskra
     # other threads are currently awaiting on some ivars that have associated tasks in a queue.
     # In that case we need to find a corresponding task in a queue, remove it from there
     # and call it inline.
-    sig {
-      params(
-        ivar:           ::Concurrent::IVar,
-        fibers_subtree: ::Iskra::FibersDispatchTree
-      ).returns(T.untyped)
-    }
-    def await(ivar, fibers_subtree)
-      if !T.must(@threads).include?(Thread.current)
-        T.unsafe(ivar.value)
-      else
-        non_awaiting_count = length - T.must(@awaiting).length
-        if non_awaiting_count != 1
-          tracked_await(ivar)
-        else
-          # delete_if is O(n) which is not super effective
-          # I think using Deq on top of hash to allow O(1) access by ivar should do the trick
-          # On other hand though that will require synchronization of @queue since the thread pool instance
-          # is accessed from multiple threads
-          # it doesn't require synchronization right now since delete_if is atomic (as any C-method)
-          executable_ctx = T.must(@queue).delete_if { |ctx| ctx.ivar == ivar }.first
-          if executable_ctx.nil?
-            tracked_await(ivar)
-          else
-            # TODO: this is functionality from Executor, but it should be here
-            # ThreadPool and Executor should be refactored to clearly separate responsibilities
-            begin
-              thread_pool = ::Iskra::ImmediateThreadPool.new
-              executor    = ::Iskra::Runtime.new(thread_pool: thread_pool)
-              task = executable_ctx.task
-              subtask_fiber = executor.build_new_fiber(task)
-              fibers_subtree.fiber = subtask_fiber
-              # [CANCELLATION] Should it cancel here?
-              ivar.set(executor.execute(task, subtask_fiber, fibers_subtree))
-            rescue => e
-              ivar.set(::Iskra::ExecResult::Failure.new(e))
-            end
-            ivar.value
-          end
-        end
-      end
-    end
+    # sig {
+    #   params(
+    #     ivar:           ::Concurrent::IVar,
+    #     fibers_subtree: ::Iskra::FibersDispatchTree
+    #   ).returns(T.untyped)
+    # }
+    # def await(ivar, fibers_subtree)
+    #   if !T.must(@threads).include?(Thread.current)
+    #     T.unsafe(ivar.value)
+    #   else
+    #     non_awaiting_count = length - T.must(@awaiting).length
+    #     if non_awaiting_count != 1
+    #       tracked_await(ivar)
+    #     else
+    #       # delete_if is O(n) which is not super effective
+    #       # I think using Deq on top of hash to allow O(1) access by ivar should do the trick
+    #       # On other hand though that will require synchronization of @queue since the thread pool instance
+    #       # is accessed from multiple threads
+    #       # it doesn't require synchronization right now since delete_if is atomic (as any C-method)
+    #       executable_ctx = T.must(@queue).delete_if { |ctx| ctx.ivar == ivar }.first
+    #       if executable_ctx.nil?
+    #         tracked_await(ivar)
+    #       else
+    #         # TODO: this is functionality from Executor, but it should be here
+    #         # ThreadPool and Executor should be refactored to clearly separate responsibilities
+    #         begin
+    #           thread_pool = ::Iskra::ImmediateThreadPool.new
+    #           executor    = ::Iskra::Runtime.new(thread_pool: thread_pool)
+    #           task = executable_ctx.task
+    #           subtask_fiber = executor.build_new_fiber(task)
+    #           fibers_subtree.fiber = subtask_fiber
+    #           # [CANCELLATION] Should it cancel here?
+    #           ivar.set(executor.execute(task, subtask_fiber, fibers_subtree))
+    #         rescue => e
+    #           ivar.set(::Iskra::ExecResult::Failure.new(e))
+    #         end
+    #         ivar.value
+    #       end
+    #     end
+    #   end
+    # end
 
     sig { params(timeout: T.nilable(T.any(Integer, Float))).returns(T::Boolean) }
     def wait_for_termination(timeout = nil)

@@ -85,9 +85,6 @@ module Iskra
     # Main execution loop responsible for executing tasks.
     def execute(task, preinitialized_fiber = nil, initial_fibers_tree = nil, debug: false)
       log("Started executing task #{task} label=#{task.label}")
-      if task.is_a?(::Iskra::Async)
-        # binding.pry
-      end
       fiber = preinitialized_fiber || build_new_fiber(task)
       if initial_fibers_tree
         fibers_tree    = initial_fibers_tree
@@ -99,15 +96,35 @@ module Iskra
       end
       @fibers_tree = fibers_tree
 
-      # Have to explicitly declare all these variables beforehand, since Sorbet
-      # doesn't allow to initialize variables inside the loop
+      # Following variables represent a state of a runtime loop.
+      
+      # Stores an active task (or coroutine, terms may be used interchangeably): the task is currently executed by the Iskra runtime.
+      # Iskra runtime implements a cooperative multitasking, so a coroutine must yield control to the runtime ocassionally.
+      # One of many responsiblities of the runtime is to select a next task to ensure fair distribution of processing time.
+      # Given this runtime may suspend and resume tasks, so current_task may change even if a previous tasks isn't finished.
+      # Before the loop is initializeed top level task, from which the execution is unrolled.
       current_task          = task
+      # The task fiber, usually initialized in the runtime since it is required
+      # to store all iskra's fiber in a registry to ensure that concurrent operations
+      # are called inside a coroutine (or in run_blocking).
       current_fiber         = T.let(fiber, T.nilable(Fiber))
       latest_yield          = T.let(nil, T.untyped)
+      # Stores a value, that current fiber will be resumed with during next iteration of the loop.
+      # Primarily used to return a value from runtime to an Task#await! caller.
       next_resumed          = T.let(nil, T.untyped)
+      # Store current yield of the current fiber
+      # During each iteration of a runtime loop, the runtime resume current fiber, thus yielding execution to the coroutine fiber.
+      # The coroutine fiber executes until the Fiber.yield call, which yields execution to the runtime with an optional value.
+      # In case of couroutine fibers their yield value will be either a message to runtime (e.g. Iskra::Dispatch), or some value on coroutine finish.
       current_yield         = T.let(nil, T.untyped)
+      # Stores a link to a node in a global coroutines tree that corresponds to an active task
       current_fiber_subtree = T.let(fibers_tree, T.nilable(::Iskra::FibersDispatchTree))
       subtask_fiber         = T.let(nil, T.nilable(Fiber))
+      # Scheduler task context is required for suspending task.
+      # When a task is suspended, all the corresponding runtime loop state is saved to a context,
+      # and the context is saved to a scheduler, so the task can be resumed later.
+      # 
+      # Before the loop starts the context is initialized for a task that is passed as an argument.
       current_task_context  = T.let(
         ::Iskra::Scheduler::TaskContext.new(
           task: task,
@@ -119,13 +136,16 @@ module Iskra
         T.nilable(::Iskra::Scheduler::TaskContext)
       )
 
+      # Set the state of the task to running.
       T.must(current_fiber_subtree).state_ref.change_to(FiberState::Running)
 
+      # Start of the main runtime loop
+      # Structure of the loop:
+      # 
       loop do
         log("New runtime iteration start")
         if current_task_context.nil?
           current_task_context = @scheduler.next_task_to_execute
-          # binding.pry if current_task_context&.task&.label == "main"
           break if current_task_context.nil?
 
           current_task          = current_task_context.task
@@ -135,7 +155,6 @@ module Iskra
           next_resumed          = current_task_context.next_resumed
 
           log("Taking new task into work #{current_task} label=#{current_task.label}")
-          # binding.pry
           T.must(current_fiber_subtree).state_ref.change_to(FiberState::Running)
         elsif @scheduler.yield_now?(current_task_context.task)
           suspended_task_data = ::Iskra::Scheduler::TaskContext.new(
@@ -270,6 +289,7 @@ module Iskra
           next_resumed = nil
         when ::Iskra::Delay
           delay_time = T.unsafe(current_yield.time)
+          # TODO use monotonic time
           awake_at = Time.now + delay_time
           suspended_task_data = ::Iskra::Scheduler::TaskContext.new(
             task:  current_task,
