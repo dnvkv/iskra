@@ -22,7 +22,6 @@ module Iskra
 
       const :task, ::Iskra::Task[T.untyped]
       const :fiber, Fiber
-      # const :latest_yield, T.untyped
       const :next_resumed, T.untyped
       const :current_fiber_subtree, T.nilable(::Iskra::FibersDispatchTree)
 
@@ -31,7 +30,6 @@ module Iskra
         TaskContext.new(
           task: task,
           fiber: fiber,
-          # latest_yield: latest_yield,
           next_resumed: new_next_resumed,
           current_fiber_subtree: current_fiber_subtree
         )
