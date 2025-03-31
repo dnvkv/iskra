@@ -39,6 +39,7 @@ module Iskra
       end
     end
 
+    sig { returns(T::Boolean) }
     def scope_waiting?
       case self
       when ::Iskra::FiberState::ScopeWaiting then true
@@ -46,6 +47,7 @@ module Iskra
       end
     end
 
+    sig { returns(T::Boolean) }
     def canceled?
       case self
       when ::Iskra::FiberState::Canceled then true
@@ -69,6 +71,7 @@ module Iskra
       end
     end
 
+    sig { returns(T::Boolean) }
     def completed?
       canceled? || finished? || failed?
     end
@@ -152,6 +155,7 @@ module Iskra
 
       private
 
+      sig { params(from: ::Iskra::FiberState, to: ::Iskra::FiberState).returns(InvalidTransitionError) }
       def invalid_transition_error(from, to)
         InvalidTransitionError.new("Invalid transition from `#{from.serialize}` to `#{to.serialize}`")
       end

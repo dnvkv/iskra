@@ -116,6 +116,22 @@ module Iskra
       end
 
       sig {
+        type_parameters(:A, :B)
+          .params(
+            channel: Iskra::Channel[T.type_parameter(:B)],
+            label: T.nilable(String),
+            blk: T.proc.params(arg0: Iskra::Channel[T.type_parameter(:B)]).returns(T.type_parameter(:A))
+          ).returns(::Iskra::Coroutine[T.type_parameter(:A)])
+      }
+      def with_channel(channel, label: nil, &blk)
+        concurrent(label: label) do
+          result = concurrent { blk.call(channel) }.await!
+          channel.close
+          result
+        end
+      end
+
+      sig {
         type_parameters(:A)
           .params(label: T.nilable(String), blk: T.proc.returns(T.type_parameter(:A)))
           .returns(::Iskra::ConcurrentScope[T.type_parameter(:A)])

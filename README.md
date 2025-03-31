@@ -245,14 +245,14 @@ end
 # > After 0.2 delay
 # > In outer
 ```
-Note that without concurrent scope scheduler would execute outer coroutine first, so "In outer" will be printed first, since `scope` coroutine will be suspended by `delay` thus making scheduler to prioritize execution of top level coroutine.
+Note that without concurrent scope scheduler would execute outer coroutine first, so "In outer" will be printed first, since `scope` coroutine will be suspended by `delay` thus making scheduler to shift execution back to the top level coroutine.
 
 ### Channel
 
-Channel is synchronization primitive used for communications between coroutines. Basically
-a channel is blocking timed queue, but instead of blocking threads it suspends fibers.
+Channel is a synchronization primitive used for communication between coroutines. Basically
+a channel is a blocking timed queue, but instead of blocking threads it suspends fibers.
 
-Channel is parameterized with a type of it's element, so it has to be provided during initialization. Default channel is unbound, which means its size is not limited, so it potentially infinite.
+Channel is parameterized with a type of its element, so it has to be provided during initialization. Default channel is unbound, which means its size is not limited, so it is potentially infinite.
 
 ```ruby
 channel = Iskra::Channel[String].new

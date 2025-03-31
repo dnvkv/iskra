@@ -232,16 +232,19 @@ module Iskra
 
               break task_context.with_next_resumed(next_resumed)
             else
-              # If queue is empty, and there's only one task which awaits on IVar
+              # If both queues are empty, and there's only one task which awaits on IVar
               # it makes sense to suspend current thred until IVar is complete to avoid unnecessary CPU
               # this is espially important taking into account that unecessary schedule work will interfere
               # with threads running CPU bound tasks in a thread pool.
               # 
               # If the second check is true, all coroutines in the queue is in awaiting state
               # in this case it makes sense to await until the next ivar will be complete, and the awaiting coroutine is resumed
-              if @queue.empty?
+              #
+              # TODO: the optimization is not applied to a delayed queue, so if the queue is empty and there are delayed tasks
+              # the scheduler will loop until the next delayed is resumed, or some awaiting task will be resumed.
+              if @queue.empty? && @delayed_queue.empty?
                 awaiting_ivar.wait
-              elsif @queue.size < @awaiting.size
+              elsif @queue.size < @awaiting.size && @delayed_queue.empty?
                 aggregate_ivar = ::Concurrent::IVar.new
                 @awaiting.values.each do |ivar|
                   ivar.add_observer { aggregate_ivar.try_set(true) }

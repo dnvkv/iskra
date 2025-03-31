@@ -83,6 +83,19 @@ describe ::Iskra::Task do
     end
 
     context "delays" do
+      it "suspends for a specified time" do
+        result = run_blocking do
+          concurrent do
+            starting = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            delay(0.1)
+            ending = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            ending - starting
+          end
+        end
+
+        expect(result > 0.1 && result < 0.11).to be_truthy
+      end
+
       it "suspends coroutines during delays" do
         result = run_blocking do
           concurrent do
@@ -141,6 +154,24 @@ describe ::Iskra::Task do
       end
     end
 
+    context "awaiting" do
+      it "allows to suspend coroutine with await" do
+        result = run_blocking do
+          concurrent do
+            buffer = []
+            c1 = concurrent do
+              buffer << 1
+            end
+            c1.await!
+            buffer << 2
+            buffer
+          end
+        end
+
+        expect(result).to eq([1, 2])
+      end
+    end
+
     context "async execution" do
       it "doesn't block the main thread" do
         starting = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -181,6 +212,71 @@ describe ::Iskra::Task do
 
         expect(result).to eq([1, 2])
         expect(elapsed < 0.3).to be_truthy
+      end
+    end
+
+    context "concurrent scopes" do
+      it "suspends parent coroutine until the scope is finished" do
+        result = run_blocking do
+          concurrent do
+            buffer = []
+            concurrent_scope do
+              delay(0.1)
+              buffer << 1
+        
+              delay(0.1)
+              buffer << 2
+            end
+            buffer << 3
+            buffer
+          end
+        end
+
+        expect(result).to eq([1, 2, 3])
+      end
+    end
+
+    context "channels" do
+      it "passes values" do
+        result = run_blocking do
+          concurrent do
+            channel = Iskra::Channel[String].new
+
+            consumer = concurrent do
+              channel.receive.await!
+            end
+        
+            producer = concurrent do
+              channel.post("Hello world!")
+            end
+
+            result = consumer.await!
+        
+            channel.close
+
+            result
+          end
+        end
+
+        expect(result).to eq("Hello world!")
+      end
+
+      describe "#with_channel" do
+        it "provides a channel and closes it" do
+          result = run_blocking do
+            concurrent do
+              channel = Iskra::Channel[String].new
+              channel_result = with_channel(channel) do |inner_channel|
+                consumer = concurrent { inner_channel.receive.await! }
+                concurrent { inner_channel.post(:result) }
+                consumer.await!
+              end.await!
+              [channel.closed?.await!, channel_result]
+            end
+          end
+  
+          expect(result).to eq([true, :result])
+        end
       end
     end
   end
