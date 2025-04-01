@@ -5,7 +5,7 @@ require "spec_helper"
 
 require_relative "../../lib/iskra/outside_of_conccurrent_scope_error"
 
-describe ::Iskra::Task do
+describe "Iskra Corotines" do
   context "when calling outside of concurrent scope" do
     describe "Async#await!" do
       it "raises error" do

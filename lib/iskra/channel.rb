@@ -133,6 +133,11 @@ module Iskra
     end
 
     sig { returns(::Iskra::Task[T::Boolean]) }
+    def empty?
+      dispatch_task { @buffer.size > 0 }
+    end
+
+    sig { returns(::Iskra::Task[T::Boolean]) }
     def full?
       dispatch_task do
         if bounded?
