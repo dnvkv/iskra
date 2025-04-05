@@ -48,6 +48,7 @@ module Iskra
           success_value = @_exec_result.value
           T.cast(success_value, A)
         else
+          puts raise @_exec_result.error
           raise @_exec_result.error
         end
       end
@@ -164,11 +165,11 @@ module Iskra
 
       sig {
         type_parameters(:A)
-          .params(blk: T.proc.returns(T.type_parameter(:A)))
+          .params(label: T.nilable(String), blk: T.proc.returns(T.type_parameter(:A)))
           .returns(T.type_parameter(:A))
       }
-      def blocking!(&blk)
-        async(&blk).await!
+      def blocking!(label: nil, &blk)
+        async(label: label, &blk).await!
       end
 
       sig { void }

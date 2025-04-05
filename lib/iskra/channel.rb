@@ -21,7 +21,7 @@ module Iskra
     sig { returns(T.nilable(Integer)) }
     attr_reader :max_size
 
-    sig { params(max_size: T.nilable(Integer), on_full: OnFull::Drop).void }
+    sig { params(max_size: T.nilable(Integer), on_full: OnFull).void }
     def initialize(max_size: nil, on_full: OnFull::Drop)
       @max_size = T.let(max_size, T.nilable(Integer))
       @on_full  = T.let(on_full, OnFull)

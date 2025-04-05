@@ -1,5 +1,5 @@
 # frozen_string_literal: true
-# typed: true
+# typed: false
 
 module Iskra
   class Worker
@@ -23,45 +23,33 @@ module Iskra
       const :task, T.proc.void
     end
 
-    sig { returns(Thread) }
     attr_reader :thread
 
-    sig { params(pool: ::Iskra::ThreadPool, id: Integer).void }
     def initialize(pool, id)
       # instance variables accessed only under pool's lock so no need to sync here again
-      @worker_queue  = T.let(::Queue.new, ::Queue)
-      @pool   = T.let(pool, ::Iskra::ThreadPool)
-      @thread = T.let(create_worker(@worker_queue, pool, pool.idletime), Thread)
+      @worker_queue  = ::Queue.new
+      @pool   = pool
+      @thread = create_worker(@worker_queue, pool, pool.idletime)
 
       if @thread.respond_to?(:name=)
         @thread.name = [pool.name, 'worker', id].compact.join('-')
       end
     end
 
-    sig { params(message: Message).void }
     def <<(message)
       @worker_queue << message
     end
 
-    sig { void }
     def stop
       @worker_queue << Stop.new
     end
 
-    sig { void }
     def kill
       @thread.kill
     end
 
     private
 
-    sig {
-      params(
-        queue:    ::Queue,
-        pool:     ::Iskra::ThreadPool,
-        idletime: T.any(Float, Integer)
-      ).returns(Thread)
-    }
     def create_worker(queue, pool, idletime)
       Thread.new(queue, pool, idletime) do |th_queue, th_pool, th_idletime|
         last_message = Process.clock_gettime(Process::CLOCK_MONOTONIC)
@@ -93,12 +81,6 @@ module Iskra
     end
 
     # TODO: use logger
-    sig {
-      params(
-        pool: ::Iskra::ThreadPool,
-        task: Proc
-      ).void
-    }
     def run_task(pool, task)
       task.call
       pool.worker_task_completed

@@ -4,6 +4,8 @@
 require "spec_helper"
 
 describe "Iskra Channel" do
+  include ::Iskra::Task::Mixin
+  
   describe "suspensions" do
     it "suspends when receiving from an empty channel" do
       result = run_blocking do
