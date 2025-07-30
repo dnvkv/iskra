@@ -1,7 +1,10 @@
 # frozen_string_literal: true
-# typed: strict
+# typed: ignore
 
-$LOAD_PATH.unshift File.expand_path("../lib", __dir__)
+require "bundler/setup"
+require "iskra"
+
+require "irb"
 
 require "iskra"
 require 'socket'
@@ -13,7 +16,7 @@ module Iskra
   class TCPServer
     extend T::Sig
 
-    include ::Iskra::Task::Mixin
+    include ::Iskra::DSL::Mixin
 
     sig { returns(Integer) }
     attr_reader :port
@@ -82,7 +85,7 @@ module Iskra
 end
 
 
-include ::Iskra::Task::Mixin
+include ::Iskra::DSL::Mixin
 
 profile = StackProf.run(mode: :wall, raw: true) do
   run_blocking do

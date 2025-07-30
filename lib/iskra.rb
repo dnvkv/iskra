@@ -6,6 +6,7 @@ require "concurrent"
 
 
 require_relative "iskra/task"
+require_relative "iskra/dsl"
 require_relative "iskra/runtime"
 require_relative "iskra/channel"
 

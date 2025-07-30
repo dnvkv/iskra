@@ -10,12 +10,12 @@ concurrent execution of thousands workers, which would not be possible with OS t
 
 ## Documentation
 
-The main concurrent primitive of `Iskra` is a coroutine represented by abstract `Task[A]`. This type represents a coroutine which yields result of a parameterized type `A`. In order to create a task `Iskra::Task::Mixin` should be used.
+The main concurrent primitive of `Iskra` is a coroutine represented by abstract `Task[A]`. This type represents a coroutine which yields result of a parameterized type `A`. In order to create a task `Iskra::DSL::Mixin` should be used.
 
-The module `Iskra::Task::Mixin` contains dsl for launching code concurrently and managing of concurrent execution.
+The module `Iskra::DSL::Mixin` contains dsl for launching code concurrently and managing of concurrent execution.
 
 ```ruby
-include Iskra::Task::Mixin
+include Iskra::DSL::Mixin
 ```
 
 Coroutine can be created using `#concurrent` method, which receives a block of code. Coroutines can only ran within `run_blocking` blocks. The method

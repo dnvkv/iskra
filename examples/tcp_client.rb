@@ -10,7 +10,7 @@ module Iskra
   class TCPClient
     extend T::Sig
 
-    include ::Iskra::Task::Mixin
+    include ::Iskra::DSL::Mixin
 
     sig { params(host: String, port: Integer).void }
     def initialize(host , port)
@@ -31,7 +31,7 @@ module Iskra
   end
 end
 
-include ::Iskra::Task::Mixin
+include ::Iskra::DSL::Mixin
 
 run_blocking do
   concurrent do

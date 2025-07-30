@@ -72,8 +72,6 @@ module Iskra
               last_message = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
               th_pool.ready_worker(self)
-            else
-              T.absurd(message)
             end
           end
         end

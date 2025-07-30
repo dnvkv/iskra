@@ -7,9 +7,6 @@ module Iskra
     extend T::Generic
 
     Value = type_member
-
-    include ::Iskra::Task::Mixin
-
     class OnFull < T::Enum
       enums do
         Drop  = new

@@ -7,7 +7,7 @@ require "iskra"
 require 'benchmark'
 require "benchmark/ips"
 
-include ::Iskra::Task::Mixin
+include ::Iskra::DSL::Mixin
 
 Benchmark.ips do |x|
   run_blocking do

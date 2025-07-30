@@ -15,7 +15,21 @@ module Iskra
       MSG = "Task is already in `awaiting` state"
     end
 
-    class TaskContext < Struct.new(:task, :fiber, :next_resumed, :previous_yield, :current_fiber_subtree)
+    class TaskContext
+      attr_reader :task
+      attr_reader :fiber
+      attr_reader :next_resumed
+      attr_reader :previous_yield
+      attr_reader :current_fiber_subtree
+
+      def initialize(task:, fiber:, next_resumed:, previous_yield:, current_fiber_subtree:)
+        @task                  = task
+        @fiber                 = fiber
+        @next_resumed          = next_resumed
+        @previous_yield        = previous_yield
+        @current_fiber_subtree = current_fiber_subtree
+      end
+
       def with_next_resumed(new_next_resumed)
         TaskContext.new(
           task: task,

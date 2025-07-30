@@ -9,7 +9,7 @@ require 'stackprof'
 require_relative "../examples/tcp_client"
 require_relative "../examples/tcp_server"
 
-include ::Iskra::Task::Mixin
+include ::Iskra::DSL::Mixin
 
 server_tp = ::Iskra::ThreadPool.new(min_threads: 4, max_threads: 4)
 server_runtime = ::Iskra::Runtime.new(thread_pool: server_tp)

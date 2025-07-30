@@ -6,7 +6,7 @@ $LOAD_PATH.unshift File.expand_path("../lib", __dir__)
 require "iskra"
 require 'stackprof'
 
-include ::Iskra::Task::Mixin
+include ::Iskra::DSL::Mixin
 
 profile = StackProf.run(mode: :wall, raw: true) do
   run_blocking do
