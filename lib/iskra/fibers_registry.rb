@@ -18,5 +18,9 @@ module Iskra
     def contains?(fiber)
       @set.include?(fiber)
     end
+
+    def size
+      @set.size
+    end
   end
 end

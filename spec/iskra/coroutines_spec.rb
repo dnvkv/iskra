@@ -51,7 +51,7 @@ describe "Iskra Corotines" do
   end
 
   describe "coroutines" do
-    include ::Iskra::Task::Mixin
+    include ::Iskra::DSL::Mixin
 
     it "executes coroutine in concurrent block" do
       result = run_blocking do
@@ -276,6 +276,24 @@ describe "Iskra Corotines" do
           end
   
           expect(result).to eq([true, :result])
+        end
+      end
+
+      describe "fibers clean up" do
+        it "cleans up fibers from registry" do
+          result = run_blocking do
+            concurrent do
+              init_fibers_count = ::Iskra::Runtime.fibers_registry.size
+              concurrent_scope do
+                1000.times { concurrent { } }
+              end
+
+              final_fibers_count = ::Iskra::Runtime.fibers_registry.size
+              final_fibers_count - init_fibers_count
+            end
+          end
+  
+          expect(result).to eq(1)
         end
       end
     end
